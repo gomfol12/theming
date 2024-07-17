@@ -1,5 +1,10 @@
 #include "config.h"
 
+#include <stdlib.h>
+#include <string.h>
+
+#include "util.h"
+
 static void config_resolve_variables(config_t, command_t *, size_t);
 
 void config_init(config_t *config, char *image_path)
