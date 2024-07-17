@@ -375,7 +375,7 @@ static void generate_themes(config_t config)
     create_cache_file("colors-oomox", vec, config.cache_path, generate_colors_oomox, NULL);
     create_cache_file("colors.Xresources", vec, config.cache_path, generate_colors_xresources, NULL);
     create_cache_file("colors", vec, config.cache_path, generate_colors, NULL);
-    create_cache_file("colors.json", vec, config.cache_path, generate_colors_json, &config.image_path);
+    create_cache_file("colors.json", vec, config.cache_path, generate_colors_json, config.image_path);
 
     vector_free(vec);
 
@@ -478,6 +478,7 @@ int main(int argc, char *argv[])
             break;
         case 'i':
             image = optarg;
+            generate = true;
             break;
         case 'r':
             reload = true;
