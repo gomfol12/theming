@@ -18,15 +18,15 @@
 
 static vector_t *parse_colors(const char *);
 static vector_t *get_colors(const char *, bool);
-static void create_cache_file(const char *, vector_t *, void (*)(FILE *, vector_t *, void *), void *);
+static void create_cache_file(const char *, vector_t *, const char *, void (*)(FILE *, vector_t *, void *), void *);
 static void generate_colors_oomox(FILE *, vector_t *, void *);
 static void generate_colors_xresources(FILE *, vector_t *, void *);
 static void generate_colors(FILE *, vector_t *, void *);
 static void generate_colors_json(FILE *, vector_t *, void *);
-static void make_dirs(void);
-static void reload_themes(void);
-static void generate_themes(char *);
+static void make_dirs(config_t config);
+static void generate_themes(config_t config);
 static void print_usage(const char *);
+static void wal_compatibility(config_t config);
 
 static vector_t *get_colors(const char *image_path, bool dark)
 {
@@ -129,8 +129,8 @@ static vector_t *parse_colors(const char *text)
     return colors;
 }
 
-static void create_cache_file(const char *name, vector_t *colors, void (*callback)(FILE *, vector_t *, void *),
-                              void *userdata)
+static void create_cache_file(const char *name, vector_t *colors, const char *cache_path,
+                              void (*callback)(FILE *, vector_t *, void *), void *userdata)
 {
     char *file_path = format_string("%s/%s", cache_path, name);
     char *expanded_path = expand_tilde(file_path);
@@ -351,65 +351,42 @@ static void generate_colors(FILE *file, vector_t *colors, void *userdata)
     }
 }
 
-static void make_dirs(void)
+static void make_dirs(config_t config)
 {
-    mkdir_p(cache_path);
-    mkdir_p(theme_path);
-    mkdir_p(icon_theme_path);
+    mkdir_p(config.cache_path);
+    mkdir_p(config.theme_path);
+    mkdir_p(config.icon_theme_path);
 }
 
-static void reload_themes(void)
+static void *pthread_generate_wrapper(void *arg)
 {
-    exec_command_format(false, "xrdb -merge %s/colors.Xresources", cache_path);
+    command_t *command = (command_t *)arg;
 
-    exec_command("pidof st | xargs -r kill -SIGUSR1", false);
-
-    exec_command("awesome-client 'awesome.restart()'", true);
-
-    exec_command("pywalfox update", false);
-}
-
-static void *pthread_betterlockscreen_wrapper(void *image_path)
-{
-    exec_command_format(false, "betterlockscreen -u %s", (char *)image_path);
+    exec_command(command->command, command->ignore_error);
 
     return NULL;
 }
 
-static void *pthread_oomox_gtk_wrapper(void *arg)
+static void generate_themes(config_t config)
 {
-    exec_command_format(false, "oomox-cli -o %s -t %s --hidpi %s %s/colors-oomox", oomox_theme_name, theme_path,
-                        hidpi ? "true" : "false", cache_path);
-    return NULL;
-}
-
-static void *pthread_oomox_icons_wrapper(void *arg)
-{
-    exec_command_format(false, "%s -o %s -d %s/%s %s/colors-oomox", oomox_icons_command, oomox_icon_theme_name,
-                        icon_theme_path, oomox_icon_theme_name, cache_path);
-
-    return NULL;
-}
-
-static void generate_themes(char *image_path)
-{
-    vector_t *vec = get_colors(image_path, true);
+    vector_t *vec = get_colors(config.image_path, true);
 
     // generate needed files
-    create_cache_file("colors-oomox", vec, generate_colors_oomox, NULL);
-    create_cache_file("colors.Xresources", vec, generate_colors_xresources, NULL);
-    create_cache_file("colors", vec, generate_colors, NULL);
-    create_cache_file("colors.json", vec, generate_colors_json, image_path);
+    create_cache_file("colors-oomox", vec, config.cache_path, generate_colors_oomox, NULL);
+    create_cache_file("colors.Xresources", vec, config.cache_path, generate_colors_xresources, NULL);
+    create_cache_file("colors", vec, config.cache_path, generate_colors, NULL);
+    create_cache_file("colors.json", vec, config.cache_path, generate_colors_json, &config.image_path);
 
     vector_free(vec);
 
     // generate theme stuff
-    size_t thread_count = 3;
+    size_t thread_count = config.generating_commands_size;
     pthread_t t[thread_count];
 
-    pthread_create(&t[0], NULL, pthread_betterlockscreen_wrapper, image_path);
-    pthread_create(&t[1], NULL, pthread_oomox_gtk_wrapper, NULL);
-    pthread_create(&t[2], NULL, pthread_oomox_icons_wrapper, NULL);
+    for (size_t i = 0; i < thread_count; i++)
+    {
+        pthread_create(&t[i], NULL, pthread_generate_wrapper, &config.generating_commands[i]);
+    }
 
     for (size_t i = 0; i < thread_count; i++)
     {
@@ -422,7 +399,7 @@ static void print_usage(const char *program_name)
     printf("Usage: %s [-hirR] [<image_path>]\n", program_name);
 }
 
-static void wal_compatibility(void)
+static void wal_compatibility(config_t config)
 {
     char *wal_cache_path = expand_tilde("~/.cache/wal");
 
@@ -433,16 +410,16 @@ static void wal_compatibility(void)
 
     mkdir_p(wal_cache_path);
 
-    char *colors_path_from = format_string("%s/colors", cache_path);
+    char *colors_path_from = format_string("%s/colors", config.cache_path);
     char *colors_path_to = format_string("%s/colors", wal_cache_path);
 
-    char *colors_json_path_from = format_string("%s/colors.json", cache_path);
+    char *colors_json_path_from = format_string("%s/colors.json", config.cache_path);
     char *colors_json_path_to = format_string("%s/colors.json", wal_cache_path);
 
-    char *colors_oomox_path_from = format_string("%s/colors-oomox", cache_path);
+    char *colors_oomox_path_from = format_string("%s/colors-oomox", config.cache_path);
     char *colors_oomox_path_to = format_string("%s/colors-oomox", wal_cache_path);
 
-    char *colors_Xresources_path_from = format_string("%s/colors.Xresources", cache_path);
+    char *colors_Xresources_path_from = format_string("%s/colors.Xresources", config.cache_path);
     char *colors_Xresources_path_to = format_string("%s/colors.Xresources", wal_cache_path);
 
     make_symlink(colors_path_from, colors_path_to);
@@ -471,6 +448,9 @@ int main(int argc, char *argv[])
         {0, 0, 0, 0},
     };
 
+    config_t config;
+    config_init(&config, NULL);
+
     int c;
     while ((c = getopt_long(argc, argv, "hi:rw", long_options, NULL)) != -1)
     {
@@ -479,22 +459,26 @@ int main(int argc, char *argv[])
         case 'h':
             print_usage(argv[0]);
             break;
-            char *image;
-        case 'i':
-            image = optarg;
+        case 'i': {
+            char *image = optarg;
+            config_t config2;
+            config_init(&config2, image);
 
-            make_dirs();
+            make_dirs(config2);
 
-            char *image_path = resolve_absolute_path(image);
-            generate_themes(image_path);
+            generate_themes(config2);
 
-            free(image_path);
-            break;
+            config_free(&config2);
+        }
+        break;
         case 'r':
-            reload_themes();
+            for (size_t i = 0; i < config.reload_commands_size; i++)
+            {
+                exec_command(config.reload_commands[i].command, config.reload_commands[i].ignore_error);
+            }
             break;
         case 'w':
-            wal_compatibility();
+            wal_compatibility(config);
             break;
         default:
             return EXIT_FAILURE;
@@ -517,6 +501,8 @@ int main(int argc, char *argv[])
         print_usage(argv[0]);
         return EXIT_FAILURE;
     }
+
+    config_free(&config);
 
     return EXIT_SUCCESS;
 }

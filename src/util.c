@@ -366,3 +366,45 @@ void make_symlink(const char *from, const char *to)
     free(expanded_from);
     free(expanded_to);
 }
+
+char *replace_substring(const char *str, const char *target, const char *replacement)
+{
+    char *result;
+    size_t i, count = 0;
+    size_t target_len = strlen(target);
+    size_t replacement_len = strlen(replacement);
+
+    // count occurrences of target
+    for (i = 0; str[i] != '\0'; i++)
+    {
+        if (strstr(&str[i], target) == &str[i])
+        {
+            count++;
+            i += target_len - 1;
+        }
+    }
+
+    // allocate memory for the new string (i end of old string)
+    result = (char *)malloc(i + count * (replacement_len - target_len) + 1);
+    if (result == NULL)
+    {
+        die("malloc failed:");
+    }
+
+    i = 0;
+    while (*str)
+    {
+        if (strstr(str, target) == str)
+        {
+            strcpy(&result[i], replacement);
+            i += replacement_len;
+            str += target_len;
+        }
+        else
+        {
+            result[i++] = *str++;
+        }
+    }
+    result[i] = '\0';
+    return result;
+}

@@ -19,3 +19,4 @@ char *resolve_absolute_path(const char *);
 int rmrf(char *);
 int check_directory(const char *);
 void make_symlink(const char *, const char *);
+char *replace_substring(const char *, const char *, const char *);

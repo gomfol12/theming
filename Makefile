@@ -1,7 +1,7 @@
 TARGET=theming
 PREFIX ?= /usr/local
 
-CFLAGS=-Wall -Wextra -pedantic -Wno-unused-parameter -Wno-unused-value -Wshadow -Wdouble-promotion -Wformat=2 -Wformat-overflow -Wformat-truncation=2 -Wundef -fno-common -Wconversion -Wpadded
+CFLAGS=-Wall -Wextra -pedantic -Wno-unused-parameter -Wno-unused-value -Wshadow -Wdouble-promotion -Wformat=2 -Wformat-overflow -Wformat-truncation=2 -Wundef -fno-common -Wconversion
 LDFLAGS=-lm
 
 ifdef DEBUG
