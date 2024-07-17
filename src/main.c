@@ -380,12 +380,26 @@ static void generate_themes(config_t config)
     vector_free(vec);
 
     // generate theme stuff
+
+    // exec sync commands
+    for (size_t i = 0; i < config.generating_commands_size; i++)
+    {
+        if (!config.generating_commands[i].async)
+        {
+            exec_command(config.generating_commands[i].command, config.generating_commands[i].ignore_error);
+        }
+    }
+
+    // exec async commands
     size_t thread_count = config.generating_commands_size;
     pthread_t t[thread_count];
 
     for (size_t i = 0; i < thread_count; i++)
     {
-        pthread_create(&t[i], NULL, pthread_generate_wrapper, &config.generating_commands[i]);
+        if (config.generating_commands[i].async)
+        {
+            pthread_create(&t[i], NULL, pthread_generate_wrapper, &config.generating_commands[i]);
+        }
     }
 
     for (size_t i = 0; i < thread_count; i++)
@@ -448,8 +462,11 @@ int main(int argc, char *argv[])
         {0, 0, 0, 0},
     };
 
-    config_t config;
-    config_init(&config, NULL);
+    char *image = NULL;
+    bool help = false;
+    bool generate = false;
+    bool reload = false;
+    bool wal_comp = false;
 
     int c;
     while ((c = getopt_long(argc, argv, "hi:rw", long_options, NULL)) != -1)
@@ -457,28 +474,16 @@ int main(int argc, char *argv[])
         switch (c)
         {
         case 'h':
-            print_usage(argv[0]);
+            help = true;
             break;
-        case 'i': {
-            char *image = optarg;
-            config_t config2;
-            config_init(&config2, image);
-
-            make_dirs(config2);
-
-            generate_themes(config2);
-
-            config_free(&config2);
-        }
-        break;
+        case 'i':
+            image = optarg;
+            break;
         case 'r':
-            for (size_t i = 0; i < config.reload_commands_size; i++)
-            {
-                exec_command(config.reload_commands[i].command, config.reload_commands[i].ignore_error);
-            }
+            reload = true;
             break;
         case 'w':
-            wal_compatibility(config);
+            wal_comp = true;
             break;
         default:
             return EXIT_FAILURE;
@@ -500,6 +505,32 @@ int main(int argc, char *argv[])
     {
         print_usage(argv[0]);
         return EXIT_FAILURE;
+    }
+
+    if (help)
+    {
+        print_usage(argv[0]);
+        return EXIT_SUCCESS;
+    }
+
+    config_t config;
+    config_init(&config, image);
+
+    if (generate)
+    {
+        make_dirs(config);
+        generate_themes(config);
+    }
+    if (reload)
+    {
+        for (size_t i = 0; i < config.reload_commands_size; i++)
+        {
+            exec_command(config.reload_commands[i].command, config.reload_commands[i].ignore_error);
+        }
+    }
+    if (wal_comp)
+    {
+        wal_compatibility(config);
     }
 
     config_free(&config);
