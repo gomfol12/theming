@@ -2,6 +2,12 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+// clang-format off
+#define PROJECT_VERSION_MAJOR @project_name_VERSION_MAJOR@
+#define PROJECT_VERSION_MINOR @project_name_VERSION_MINOR@
+// clang-format on
+#define RESOURCE_PATH "@RESOURCE_PATH@"
+
 typedef struct
 {
     const char *command;
