@@ -79,7 +79,7 @@ static struct json_object *json_find_by_name(struct json_object *jobj, json_type
 void config_init(config_t *config, char *image_path)
 {
     // read config file
-    char *config_file_path = format_string("%s/config.json", RESOURCE_PATH);
+    char *config_file_path = format_string("%s/theming/config.json", getenv("XDG_CONFIG_HOME"));
     FILE *file = fopen(config_file_path, "r");
     if (!file)
     {
