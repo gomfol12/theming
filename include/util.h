@@ -11,6 +11,7 @@ void *safe_calloc(size_t, size_t);
 char *format_string(const char *, ...) __attribute__((format(printf, 1, 2)));
 char *expand_tilde(const char *);
 void mkdir_p(const char *);
+void read_file(FILE *, char *, size_t);
 void exec_command(const char *, bool);
 void exec_command_format(bool, const char *, ...) __attribute__((format(printf, 2, 3)));
 void exec_command_with_output(const char *, char *, size_t, bool);

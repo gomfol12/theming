@@ -10,7 +10,7 @@
 
 typedef struct
 {
-    const char *command;
+    char *command;
     bool ignore_error;
     bool async;
 } command_t;
@@ -21,8 +21,8 @@ typedef struct
     char *theme_path;
     char *icon_theme_path;
     char *oomox_icons_command;
-    const char *oomox_theme_name;
-    const char *oomox_icon_theme_name;
+    char *oomox_theme_name;
+    char *oomox_icon_theme_name;
     char *image_path;
     command_t *generating_commands;
     size_t generating_commands_size;

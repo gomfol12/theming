@@ -1,0 +1,38 @@
+{
+    "cache_path": "~/.cache/theming",
+    "theme_path": "~/.local/share/themes",
+    "icon_theme_path": "~/.local/share/icons",
+    "oomox_icons_command": "/opt/oomox/plugins/icons_numix/change_color.sh",
+    "oomox_theme_name": "oomox-xresources-reverse",
+    "oomox_icon_theme_name": "oomox-xresources-reverse-flat",
+    "hidpi": false,
+    "generating_commands": [
+        {
+            "command": "betterlockscreen -u %IMAGE_PATH%",
+            "async": true
+        },
+        {
+            "command": "oomox-cli -o %OOMOX_THEME_NAME% -t %THEME_PATH% --hidpi %HIDPI% %CACHE_PATH%/colors-oomox",
+            "async": true
+        },
+        {
+            "command": "%OOMOX_ICONS_COMMAND% -o %OOMOX_ICON_THEME_NAME% -d %ICON_THEME_PATH%/%OOMOX_ICON_THEME_NAME% %CACHE_PATH%/colors-oomox",
+            "async": true
+        }
+    ],
+    "reload_commands": [
+        {
+            "command": "xrdb -merge %CACHE_PATH%/colors.Xresources"
+        },
+        {
+            "command": "pidof st | xargs -r kill -SIGUSR1"
+        },
+        {
+            "command": "awesome-client 'awesome.restart()'",
+            "ignore_error": true
+        },
+        {
+            "command": "pywalfox update"
+        }
+    ]
+}

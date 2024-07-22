@@ -155,6 +155,27 @@ void mkdir_p(const char *path)
     free(expanded_path);
 }
 
+void read_file(FILE *file, char *output, size_t buffer_size)
+{
+    size_t len = buffer_size;
+    size_t used = 0;
+    output[0] = '\0';
+
+    char *buffer = safe_malloc(buffer_size);
+    while (fgets(buffer, sizeof(buffer), file) != NULL)
+    {
+        size_t buffer_len = strlen(buffer);
+        if (used + buffer_len + 1 > len)
+        {
+            len += buffer_size;
+            output = safe_realloc(output, len);
+        }
+        strcpy(output + used, buffer);
+        used += buffer_len;
+    }
+    free(buffer);
+}
+
 void exec_command(const char *command, bool ignore_error)
 {
     pid_t pid = fork();

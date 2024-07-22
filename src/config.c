@@ -1,54 +1,150 @@
 #include "config.h"
 
+#include <json-c/json.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "util.h"
 
 static void config_resolve_variables(config_t, command_t *, size_t);
+static struct json_object *json_find_by_name_safe(struct json_object *, json_type, const char *);
+static struct json_object *json_find_by_name(struct json_object *, json_type, const char *);
+
+static struct json_object *json_find_by_name_safe(struct json_object *jobj, json_type jtype, const char *name)
+{
+    struct json_object *tmp;
+
+    if (!json_object_object_get_ex(jobj, name, &tmp))
+    {
+        die("config: %s not found", name);
+    }
+
+    if (!json_object_is_type(tmp, jtype))
+    {
+        if (jtype == json_type_string)
+        {
+            die("config: %s is not a string", name);
+        }
+        else if (jtype == json_type_boolean)
+        {
+            die("config: %s is not a boolean", name);
+        }
+        else if (jtype == json_type_array)
+        {
+            die("config: %s is not an array", name);
+        }
+        else
+        {
+            die("config: %s is not a valid type", name);
+        }
+    }
+
+    return tmp;
+}
+
+static struct json_object *json_find_by_name(struct json_object *jobj, json_type jtype, const char *name)
+{
+    struct json_object *tmp;
+
+    json_object_object_get_ex(jobj, name, &tmp);
+
+    if (tmp == NULL)
+    {
+        return NULL;
+    }
+
+    if (!json_object_is_type(tmp, jtype))
+    {
+        if (jtype == json_type_string)
+        {
+            die("config: %s is not a string", name);
+        }
+        else if (jtype == json_type_boolean)
+        {
+            die("config: %s is not a boolean", name);
+        }
+        else if (jtype == json_type_array)
+        {
+            die("config: %s is not an array", name);
+        }
+        else
+        {
+            die("config: %s is not a valid type", name);
+        }
+    }
+
+    return tmp;
+}
 
 void config_init(config_t *config, char *image_path)
 {
-    config->cache_path = expand_tilde("~/.cache/theming");
-    config->theme_path = expand_tilde("~/.local/share/themes");
-    config->icon_theme_path = expand_tilde("~/.local/share/icons");
-    config->oomox_icons_command = expand_tilde("/opt/oomox/plugins/icons_numix/change_color.sh");
-    config->oomox_theme_name = "oomox-xresources-reverse";
-    config->oomox_icon_theme_name = "oomox-xresources-reverse-flat";
+    // read config file
+    char *config_file_path = format_string("%s/config.json", RESOURCE_PATH);
+    FILE *file = fopen(config_file_path, "r");
+    if (!file)
+    {
+        die("fopen failed:");
+    }
+    free(config_file_path);
+    char *output = safe_malloc(BUFSIZ);
+    read_file(file, output, BUFSIZ);
+    fclose(file);
+
+    json_object *jobj = json_tokener_parse(output);
+    if (jobj == NULL)
+    {
+        die("json_tokener_parse failed. Possibly invalid JSON file.");
+    }
+    free(output);
+
+    config->cache_path =
+        expand_tilde(json_object_get_string(json_find_by_name_safe(jobj, json_type_string, "cache_path")));
+    config->theme_path =
+        expand_tilde(json_object_get_string(json_find_by_name_safe(jobj, json_type_string, "theme_path")));
+    config->icon_theme_path =
+        expand_tilde(json_object_get_string(json_find_by_name_safe(jobj, json_type_string, "icon_theme_path")));
+    config->oomox_icons_command =
+        expand_tilde(json_object_get_string(json_find_by_name_safe(jobj, json_type_string, "oomox_icons_command")));
+    config->oomox_theme_name =
+        strdup(json_object_get_string(json_find_by_name_safe(jobj, json_type_string, "oomox_theme_name")));
+    config->oomox_icon_theme_name =
+        strdup(json_object_get_string(json_find_by_name_safe(jobj, json_type_string, "oomox_icon_theme_name")));
     config->image_path = image_path == NULL ? strdup("") : resolve_absolute_path(image_path);
-    config->hidpi = false;
+    config->hidpi = json_object_get_boolean(json_find_by_name_safe(jobj, json_type_boolean, "hidpi"));
 
-    config->generating_commands_size = 3;
-    config->generating_commands = malloc(sizeof(command_t) * config->generating_commands_size);
-    config->generating_commands[0] = (command_t){
-        .command = "betterlockscreen -u %IMAGE_PATH%",
-        .async = true,
-    };
-    config->generating_commands[1] = (command_t){
-        .command = "oomox-cli -o %OOMOX_THEME_NAME% -t %THEME_PATH% --hidpi %HIDPI% %CACHE_PATH%/colors-oomox",
-        .async = true,
-    };
-    config->generating_commands[2] = (command_t){
-        .command = "%OOMOX_ICONS_COMMAND% -o %OOMOX_ICON_THEME_NAME% -d %ICON_THEME_PATH%/%OOMOX_ICON_THEME_NAME% "
-                   "%CACHE_PATH%/colors-oomox",
-        .async = true,
-    };
+    // generating commands
+    json_object *json_generating_commands = json_find_by_name_safe(jobj, json_type_array, "generating_commands");
+    config->generating_commands_size = json_object_array_length(json_generating_commands);
+    config->generating_commands = safe_calloc(config->generating_commands_size, sizeof(command_t));
 
-    config->reload_commands_size = 4;
-    config->reload_commands = malloc(sizeof(command_t) * config->reload_commands_size);
-    config->reload_commands[0] = (command_t){
-        .command = "xrdb -merge %CACHE_PATH%/colors.Xresources",
-    };
-    config->reload_commands[1] = (command_t){
-        .command = "pidof st | xargs -r kill -SIGUSR1",
-    };
-    config->reload_commands[2] = (command_t){
-        .command = "awesome-client 'awesome.restart()'",
-        .ignore_error = true,
-    };
-    config->reload_commands[3] = (command_t){
-        .command = "pywalfox update",
-    };
+    for (size_t i = 0; i < config->generating_commands_size; i++)
+    {
+        json_object *json_command = json_object_array_get_idx(json_generating_commands, i);
+        config->generating_commands[i] = (command_t){
+            .command =
+                strdup(json_object_get_string(json_find_by_name_safe(json_command, json_type_string, "command"))),
+            .async = json_object_get_boolean(json_find_by_name(json_command, json_type_boolean, "async")),
+            .ignore_error = json_object_get_boolean(json_find_by_name(json_command, json_type_boolean, "ignore_error")),
+        };
+    }
+
+    // reload commands
+    json_object *json_reload_commands = json_find_by_name_safe(jobj, json_type_array, "reload_commands");
+    config->reload_commands_size = json_object_array_length(json_reload_commands);
+    config->reload_commands = safe_calloc(config->reload_commands_size, sizeof(command_t));
+
+    for (size_t i = 0; i < config->reload_commands_size; i++)
+    {
+        json_object *json_command = json_object_array_get_idx(json_reload_commands, i);
+        config->reload_commands[i] = (command_t){
+            .command =
+                strdup(json_object_get_string(json_find_by_name_safe(json_command, json_type_string, "command"))),
+            .async = json_object_get_boolean(json_find_by_name(json_command, json_type_boolean, "async")),
+            .ignore_error = json_object_get_boolean(json_find_by_name(json_command, json_type_boolean, "ignore_error")),
+        };
+    }
+
+    json_object_put(jobj);
 
     config_resolve_variables(*config, config->generating_commands, config->generating_commands_size);
     config_resolve_variables(*config, config->reload_commands, config->reload_commands_size);
@@ -67,14 +163,11 @@ static void config_resolve_variables(config_t config, command_t *commands, size_
 
     for (size_t i = 0; i < commands_size; i++)
     {
-        char *new_command = (void *)commands[i].command;
+        char *new_command = commands[i].command;
         for (size_t j = 0; j < sizeof(variables) / sizeof(variables[0]); j++)
         {
             char *replaced_command = replace_substring(new_command, variables[j], values[j]);
-            if (new_command != commands[i].command)
-            {
-                free(new_command);
-            }
+            free(new_command);
             new_command = replaced_command;
         }
         commands[i].command = new_command;
@@ -87,14 +180,16 @@ void config_free(config_t *config)
     free(config->theme_path);
     free(config->icon_theme_path);
     free(config->oomox_icons_command);
+    free(config->oomox_theme_name);
+    free(config->oomox_icon_theme_name);
     free(config->image_path);
     for (size_t i = 0; i < config->generating_commands_size; i++)
     {
-        free((void *)config->generating_commands[i].command);
+        free(config->generating_commands[i].command);
     }
     for (size_t i = 0; i < config->reload_commands_size; i++)
     {
-        free((void *)config->reload_commands[i].command);
+        free(config->reload_commands[i].command);
     }
     free(config->generating_commands);
     free(config->reload_commands);
