@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 void die(const char *, ...) __attribute__((format(printf, 1, 2)));
 void *safe_malloc(size_t);
@@ -19,3 +20,5 @@ int rmrf(char *);
 int check_directory(const char *);
 void make_symlink(const char *, const char *);
 char *replace_substring(const char *, const char *, const char *);
+pid_t find_pid_by_name(const char *);
+void exec_command_and_disown(const char *);

@@ -1,5 +1,6 @@
 #include "util.h"
 
+#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -8,6 +9,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #define __USE_XOPEN_EXTENDED 1
+#include <dirent.h>
 #include <ftw.h>
 
 static char *format_string_internal(const char *, va_list) __attribute__((format(printf, 1, 0)));
@@ -210,18 +212,19 @@ void exec_command(const char *command, bool ignore_error, char *output, size_t b
         }
         else
         {
-            // open /dev/null and redirect stdout and stderr to it
-            int fd = open("/dev/null", O_WRONLY);
-            if (fd == -1)
+            // redirect standard input, output and error to /dev/null
+            if (freopen("/dev/null", "r", stdin) == NULL)
             {
-                die("open /dev/null failed");
+                die("freopen failed");
             }
-            if (dup2(fd, STDOUT_FILENO) == -1 || dup2(fd, STDERR_FILENO) == -1)
+            if (freopen("/dev/null", "w", stdout) == NULL)
             {
-                close(fd);
-                die("dup2 failed");
+                die("freopen failed");
             }
-            close(fd);
+            if (freopen("/dev/null", "w", stderr) == NULL)
+            {
+                die("freopen failed");
+            }
         }
 
         execv("/bin/sh", (char *[]){"sh", "-c", (char *)command, NULL});
@@ -374,4 +377,118 @@ char *replace_substring(const char *str, const char *target, const char *replace
     }
     result[i] = '\0';
     return result;
+}
+
+pid_t find_pid_by_name(const char *name)
+{
+    DIR *dir;
+    struct dirent *ent; // dir entry
+
+    if (!(dir = opendir("/proc")))
+    {
+        die("opendir failed:");
+    }
+
+    while ((ent = readdir(dir)) != NULL)
+    {
+        if (!isdigit(*ent->d_name))
+        {
+            continue;
+        }
+
+        char *proc_comm = format_string("/proc/%s/comm", ent->d_name);
+        FILE *file = fopen(proc_comm, "r");
+        free(proc_comm);
+        if (!file)
+        {
+            continue;
+        }
+
+        char *output = safe_malloc(512);
+        read_file(file, output, 512);
+        output[strcspn(output, "\n")] = 0; // remove newline character
+        fclose(file);
+
+        if (strcmp(output, name) == 0)
+        {
+            free(output);
+            closedir(dir);
+            return (pid_t)strtol(ent->d_name, NULL, 10);
+        }
+        free(output);
+    }
+
+    closedir(dir);
+    return -1;
+}
+
+void exec_command_and_disown(const char *command)
+{
+    pid_t pid;
+    pid_t sid;
+
+    pid = fork();
+    if (pid == -1)
+    {
+        die("fork failed");
+    }
+
+    if (pid == 0)
+    {
+        // child process
+
+        sid = setsid(); // create a new session and become the session leader
+        if (sid == -1)
+        {
+            die("setsid failed");
+        }
+
+        pid = fork();
+        if (pid == -1)
+        {
+            die("fork failed");
+        }
+
+        if (pid == 0)
+        {
+            // grandchild process
+
+            // redirect standard input, output and error to /dev/null
+            if (freopen("/dev/null", "r", stdin) == NULL)
+            {
+                die("freopen failed");
+            }
+            if (freopen("/dev/null", "w", stdout) == NULL)
+            {
+                die("freopen failed");
+            }
+            if (freopen("/dev/null", "w", stderr) == NULL)
+            {
+                die("freopen failed");
+            }
+
+            execv("/bin/sh", (char *[]){"sh", "-c", (char *)command, NULL});
+            die("execv failed");
+        }
+
+        // parent process
+
+        exit(EXIT_SUCCESS);
+    }
+
+    // parent process
+
+    int status;
+    if (waitpid(pid, &status, 0) == -1)
+    {
+        die("waitpid failed:");
+    }
+
+    if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
+    {
+    }
+    else
+    {
+        die("failed to spawn orphan");
+    }
 }

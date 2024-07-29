@@ -125,6 +125,7 @@ void config_init(config_t *config, char *image_path)
                 strdup(json_object_get_string(json_find_by_name_safe(json_command, json_type_string, "command"))),
             .async = json_object_get_boolean(json_find_by_name(json_command, json_type_boolean, "async")),
             .ignore_error = json_object_get_boolean(json_find_by_name(json_command, json_type_boolean, "ignore_error")),
+            .restart = json_object_get_boolean(json_find_by_name(json_command, json_type_boolean, "restart")),
         };
     }
 
@@ -141,6 +142,7 @@ void config_init(config_t *config, char *image_path)
                 strdup(json_object_get_string(json_find_by_name_safe(json_command, json_type_string, "command"))),
             .async = json_object_get_boolean(json_find_by_name(json_command, json_type_boolean, "async")),
             .ignore_error = json_object_get_boolean(json_find_by_name(json_command, json_type_boolean, "ignore_error")),
+            .restart = json_object_get_boolean(json_find_by_name(json_command, json_type_boolean, "restart")),
         };
     }
 

@@ -7,6 +7,7 @@ typedef struct
     char *command;
     bool ignore_error;
     bool async;
+    bool restart;
 } command_t;
 
 typedef struct

@@ -539,6 +539,21 @@ int main(int argc, char *argv[])
     {
         for (size_t i = 0; i < config.reload_commands_size; i++)
         {
+            if (config.reload_commands[i].restart)
+            {
+                pid_t pid = find_pid_by_name(config.reload_commands[i].command);
+                if (pid != -1)
+                {
+                    if (kill(pid, SIGTERM) == -1)
+                    {
+                        die("kill failed:");
+                    }
+                }
+
+                exec_command_and_disown(config.reload_commands[i].command);
+                continue;
+            }
+
             exec_command(config.reload_commands[i].command, config.reload_commands[i].ignore_error, NULL, 0);
         }
     }
