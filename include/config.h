@@ -24,6 +24,7 @@ typedef struct
     command_t *reload_commands;
     size_t reload_commands_size;
     bool hidpi;
+    bool send_notification;
 } config_t;
 
 void config_init(config_t *, char *);

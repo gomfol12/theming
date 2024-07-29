@@ -442,7 +442,9 @@ static void wal_compatibility(config_t config)
 
     if (check_directory(wal_cache_path) == 0)
     {
-        die("pywal cache directory already exists");
+        fprintf(stderr, "pywal cache directory already exists");
+        free(wal_cache_path);
+        return;
     }
 
     mkdir_p(wal_cache_path);
@@ -530,6 +532,13 @@ int main(int argc, char *argv[])
     config_init(&config, image);
     free(image);
 
+    // notification
+    if (generate && reload && config.send_notification)
+    {
+        exec_command_format(false, NULL, 0, "notify-send -i %s \"Wallpaper Changed\" \"Changing theme...\"",
+                            config.image_path);
+    }
+
     if (generate)
     {
         make_dirs(config);
@@ -560,6 +569,13 @@ int main(int argc, char *argv[])
     if (wal_comp)
     {
         wal_compatibility(config);
+    }
+
+    // notification
+    if (generate && reload && config.send_notification)
+    {
+        exec_command_format(false, NULL, 0, "notify-send -i %s \"Wallpaper Changed\" \"Theme changed\"",
+                            config.image_path);
     }
 
     config_free(&config);
