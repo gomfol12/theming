@@ -56,7 +56,7 @@ else()
 endif()
 
 # generate config.h
-configure_file(include/config.h.in config.h)
+configure_file(include/project_vars.h.in project_vars.h)
 
 # executable RPATH
 set_target_properties(${CMAKE_PROJECT_NAME}

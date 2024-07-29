@@ -13,6 +13,7 @@
 
 #include "color.h"
 #include "config.h"
+#include "project_vars.h"
 #include "util.h"
 #include "vector.h"
 
@@ -409,8 +410,9 @@ static void generate_themes(config_t config)
 
 static void print_usage(const char *program_name)
 {
-    printf("Usage: %s [-hi:rw] [<image_path>]\n", program_name);
+    printf("Usage: %s [-vhi:rw] [<image_path>]\n", program_name);
     printf("Options:\n");
+    printf("  -v, --version\t\t\tShow version\n");
     printf("  -h, --help\t\t\tShow this help message\n");
     printf("  -i, --image <image_path>\tGenerate theme from image\n");
     printf("  -r, --reload\t\t\tReload theme\n");
@@ -446,27 +448,27 @@ static void wal_compatibility(config_t config)
 int main(int argc, char *argv[])
 {
     static struct option long_options[] = {
-        {"help", no_argument, 0, 0},
-        {"image", required_argument, 0, 0},
-        {"reload", no_argument, 0, 0},
-        {"wal", no_argument, 0, 0},
-        {0, 0, 0, 0},
+        {"version", no_argument, 0, 0}, {"help", no_argument, 0, 0}, {"image", required_argument, 0, 0},
+        {"reload", no_argument, 0, 0},  {"wal", no_argument, 0, 0},  {0, 0, 0, 0},
     };
 
     char *image = NULL;
-    bool help = false;
     bool generate = false;
     bool reload = false;
     bool wal_comp = false;
 
     int c;
-    while ((c = getopt_long(argc, argv, "hi:rw", long_options, NULL)) != -1)
+    while ((c = getopt_long(argc, argv, "vhi:rw", long_options, NULL)) != -1)
     {
         switch (c)
         {
+        case 'v':
+            // printf("Version: %s.%s\n", PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR);
+            printf("%s version: %d.%d\n", argv[0], PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR);
+            return EXIT_SUCCESS;
         case 'h':
-            help = true;
-            break;
+            print_usage(argv[0]);
+            return EXIT_SUCCESS;
         case 'i':
             image = optarg;
             generate = true;
@@ -497,12 +499,6 @@ int main(int argc, char *argv[])
     {
         print_usage(argv[0]);
         return EXIT_FAILURE;
-    }
-
-    if (help)
-    {
-        print_usage(argv[0]);
-        return EXIT_SUCCESS;
     }
 
     config_t config;

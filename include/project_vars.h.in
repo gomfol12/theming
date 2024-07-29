@@ -1,0 +1,7 @@
+#pragma once
+
+// clang-format off
+#define PROJECT_VERSION_MAJOR @theming_VERSION_MAJOR@
+#define PROJECT_VERSION_MINOR @theming_VERSION_MINOR@
+// clang-format on
+#define RESOURCE_PATH "@RESOURCE_PATH@"
