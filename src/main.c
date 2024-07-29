@@ -32,8 +32,7 @@ static vector_t *get_colors(const char *image_path, bool dark)
 {
     // call imagemagick
     char *output = safe_malloc(BUFSIZ);
-    exec_command_with_output_format(output, BUFSIZ, false, "magick %s -resize 25%% -colors 16 -unique-colors txt:-",
-                                    image_path);
+    exec_command_format(false, output, BUFSIZ, "magick %s -resize 25%% -colors 16 -unique-colors txt:-", image_path);
 
     // get colors array
     vector_t *parsed_colors = parse_colors(output);
@@ -362,7 +361,7 @@ static void *pthread_generate_wrapper(void *arg)
 {
     command_t *command = (command_t *)arg;
 
-    exec_command(command->command, command->ignore_error);
+    exec_command(command->command, command->ignore_error, NULL, 0);
 
     return NULL;
 }
@@ -386,7 +385,7 @@ static void generate_themes(config_t config)
     {
         if (!config.generating_commands[i].async)
         {
-            exec_command(config.generating_commands[i].command, config.generating_commands[i].ignore_error);
+            exec_command(config.generating_commands[i].command, config.generating_commands[i].ignore_error, NULL, 0);
         }
     }
 
@@ -518,7 +517,7 @@ int main(int argc, char *argv[])
     {
         for (size_t i = 0; i < config.reload_commands_size; i++)
         {
-            exec_command(config.reload_commands[i].command, config.reload_commands[i].ignore_error);
+            exec_command(config.reload_commands[i].command, config.reload_commands[i].ignore_error, NULL, 0);
         }
     }
     if (wal_comp)

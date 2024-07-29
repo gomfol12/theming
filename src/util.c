@@ -176,75 +176,17 @@ void read_file(FILE *file, char *output, size_t buffer_size)
     free(buffer);
 }
 
-void exec_command(const char *command, bool ignore_error)
-{
-    pid_t pid = fork();
-    if (pid == -1)
-    {
-        die("fork failed:");
-    }
-
-    if (pid == 0)
-    {
-        // open /dev/null and redirect stdout and stderr to it
-        int fd = open("/dev/null", O_WRONLY);
-        if (fd == -1)
-        {
-            die("open /dev/null failed");
-        }
-        if (dup2(fd, STDOUT_FILENO) == -1 || dup2(fd, STDERR_FILENO) == -1)
-        {
-            close(fd);
-            die("dup2 failed");
-        }
-        close(fd);
-
-        execv("/bin/sh", (char *[]){"sh", "-c", (char *)command, NULL});
-        die("execv failed:");
-    }
-
-    int status;
-    if (waitpid(pid, &status, 0) == -1)
-    {
-        die("waitpid failed:");
-    }
-
-    if (WIFEXITED(status) && WEXITSTATUS(status) != 0)
-    {
-        if (!ignore_error)
-        {
-            die("%s failed with exit status %d", command, WEXITSTATUS(status));
-        }
-        else
-        {
-            fprintf(stderr, "%s failed with exit status %d\n", command, WEXITSTATUS(status));
-        }
-    }
-    if (WIFSIGNALED(status))
-    {
-        die("%s terminated by signal %d", command, WTERMSIG(status));
-    }
-}
-
-void exec_command_format(bool ignore_error, const char *format, ...)
-{
-    va_list args;
-    va_start(args, format);
-    char *command = format_string_internal(format, args);
-    va_end(args);
-
-    exec_command(command, ignore_error);
-    free(command);
-}
-
-void exec_command_with_output(const char *command, char *output, size_t buffer_size, bool ignore_error)
+void exec_command(const char *command, bool ignore_error, char *output, size_t buffer_size)
 {
     int pfd[2];
     pid_t pid;
 
-    if (pipe(pfd) == -1)
+    if (output != NULL)
     {
-        die("pipe failed:");
+        if (pipe(pfd) == -1)
+        {
+            die("pipe failed:");
+        }
     }
 
     pid = fork();
@@ -257,29 +199,49 @@ void exec_command_with_output(const char *command, char *output, size_t buffer_s
     {
         // child process
 
-        close(pfd[0]); // close read end
-        if (dup2(pfd[1], STDOUT_FILENO) == -1)
+        if (output != NULL)
         {
-            die("dup2 failed:");
+            close(pfd[0]); // close read end
+            if (dup2(pfd[1], STDOUT_FILENO) == -1)
+            {
+                die("dup2 failed:");
+            }
+            close(pfd[1]); // close original write end. Not needed anymore
         }
-        close(pfd[1]); // close original write end. Not needed anymore
+        else
+        {
+            // open /dev/null and redirect stdout and stderr to it
+            int fd = open("/dev/null", O_WRONLY);
+            if (fd == -1)
+            {
+                die("open /dev/null failed");
+            }
+            if (dup2(fd, STDOUT_FILENO) == -1 || dup2(fd, STDERR_FILENO) == -1)
+            {
+                close(fd);
+                die("dup2 failed");
+            }
+            close(fd);
+        }
 
         execv("/bin/sh", (char *[]){"sh", "-c", (char *)command, NULL});
         die("execv failed:");
     }
 
     // parent process
-
-    close(pfd[1]); // close write end
-    FILE *file = fdopen(pfd[0], "r");
-    if (!file)
+    if (output != NULL)
     {
-        die("fdopen failed:");
+        close(pfd[1]); // close write end
+        FILE *file = fdopen(pfd[0], "r");
+        if (!file)
+        {
+            die("fdopen failed:");
+        }
+
+        read_file(file, output, buffer_size);
+
+        fclose(file);
     }
-
-    read_file(file, output, buffer_size);
-
-    fclose(file);
 
     int status;
     if (waitpid(pid, &status, 0) == -1)
@@ -304,14 +266,14 @@ void exec_command_with_output(const char *command, char *output, size_t buffer_s
     }
 }
 
-void exec_command_with_output_format(char *output, size_t buffer_size, bool ignore_error, const char *format, ...)
+void exec_command_format(bool ignore_error, char *output, size_t buffer_size, const char *format, ...)
 {
     va_list args;
     va_start(args, format);
     char *command = format_string_internal(format, args);
     va_end(args);
 
-    exec_command_with_output(command, output, buffer_size, ignore_error);
+    exec_command(command, ignore_error, output, buffer_size);
     free(command);
 }
 
