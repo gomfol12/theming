@@ -44,7 +44,7 @@ endif()
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${JSON_C_STATIC_LIBRARY} m)
 
 # install location
-set(CMAKE_INSTALL_PREFIX "/usr/local")
+# set(CMAKE_INSTALL_PREFIX "/usr/local")
 
 # resource path
 option(USE_INSTALL_RESOURCE_PATH "Set resource path to install location" OFF)
