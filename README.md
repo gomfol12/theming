@@ -17,7 +17,7 @@ make install
 
 Copy `/usr/local/share/theming/content/config.json` to `~/.config/theming/config.json` and edit it to your needs.
 
-To change theme run: `theming -ri /path/to/image`
+To change theme run: `theming -i /path/to/image -r`
 
 # config file
 
