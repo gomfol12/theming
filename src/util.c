@@ -277,23 +277,7 @@ void exec_command_with_output(const char *command, char *output, size_t buffer_s
         die("fdopen failed:");
     }
 
-    size_t len = buffer_size;
-    size_t used = 0;
-    output[0] = '\0';
-
-    char *buffer = safe_malloc(buffer_size);
-    while (fgets(buffer, sizeof(buffer), file) != NULL)
-    {
-        size_t buffer_len = strlen(buffer);
-        if (used + buffer_len + 1 > len)
-        {
-            len += buffer_size;
-            output = safe_realloc(output, len);
-        }
-        strcpy(output + used, buffer);
-        used += buffer_len;
-    }
-    free(buffer);
+    read_file(file, output, buffer_size);
 
     fclose(file);
 

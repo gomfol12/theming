@@ -410,7 +410,21 @@ static void generate_themes(config_t config)
 
 static void print_usage(const char *program_name)
 {
-    printf("Usage: %s [-hirR] [<image_path>]\n", program_name);
+    printf("Usage: %s [-hi:rw] [<image_path>]\n", program_name);
+    printf("Options:\n");
+    printf("  -h, --help\t\t\tShow this help message\n");
+    printf("  -i, --image <image_path>\tGenerate theme from image\n");
+    printf("  -r, --reload\t\t\tReload theme\n");
+    printf("  -w, --wal\t\t\tGenerate pywal .cache file to make generated theme compatible.\n");
+}
+
+static void wal_compatibility_helper(config_t config, const char *wal_cache_path, const char *file_name)
+{
+    char *colors_path_from = format_string("%s/%s", config.cache_path, file_name);
+    char *colors_path_to = format_string("%s/%s", wal_cache_path, file_name);
+    make_symlink(colors_path_from, colors_path_to);
+    free(colors_path_from);
+    free(colors_path_to);
 }
 
 static void wal_compatibility(config_t config)
@@ -424,32 +438,10 @@ static void wal_compatibility(config_t config)
 
     mkdir_p(wal_cache_path);
 
-    char *colors_path_from = format_string("%s/colors", config.cache_path);
-    char *colors_path_to = format_string("%s/colors", wal_cache_path);
-
-    char *colors_json_path_from = format_string("%s/colors.json", config.cache_path);
-    char *colors_json_path_to = format_string("%s/colors.json", wal_cache_path);
-
-    char *colors_oomox_path_from = format_string("%s/colors-oomox", config.cache_path);
-    char *colors_oomox_path_to = format_string("%s/colors-oomox", wal_cache_path);
-
-    char *colors_Xresources_path_from = format_string("%s/colors.Xresources", config.cache_path);
-    char *colors_Xresources_path_to = format_string("%s/colors.Xresources", wal_cache_path);
-
-    make_symlink(colors_path_from, colors_path_to);
-    make_symlink(colors_json_path_from, colors_json_path_to);
-    make_symlink(colors_oomox_path_from, colors_oomox_path_to);
-    make_symlink(colors_Xresources_path_from, colors_Xresources_path_to);
-
-    free(wal_cache_path);
-    free(colors_path_from);
-    free(colors_path_to);
-    free(colors_json_path_from);
-    free(colors_json_path_to);
-    free(colors_oomox_path_from);
-    free(colors_oomox_path_to);
-    free(colors_Xresources_path_from);
-    free(colors_Xresources_path_to);
+    wal_compatibility_helper(config, wal_cache_path, "colors");
+    wal_compatibility_helper(config, wal_cache_path, "colors.json");
+    wal_compatibility_helper(config, wal_cache_path, "colors-oomox");
+    wal_compatibility_helper(config, wal_cache_path, "colors.Xresources");
 }
 
 int main(int argc, char *argv[])
