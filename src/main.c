@@ -24,7 +24,9 @@ static void generate_colors_oomox(FILE *, vector_t *, void *);
 static void generate_colors_xresources(FILE *, vector_t *, void *);
 static void generate_colors(FILE *, vector_t *, void *);
 static void generate_colors_json(FILE *, vector_t *, void *);
+static void generate_wallpaper_file_path(FILE *, vector_t *, void *);
 static void make_dirs(config_t config);
+static void *pthread_generate_wrapper(void *);
 static void generate_themes(config_t config);
 static void print_usage(const char *);
 static void wal_compatibility(config_t config);
@@ -351,6 +353,11 @@ static void generate_colors(FILE *file, vector_t *colors, void *userdata)
     }
 }
 
+static void generate_wallpaper_file_path(FILE *file, vector_t *colors, void *userdata)
+{
+    fprintf(file, "%s", (char *)userdata);
+}
+
 static void make_dirs(config_t config)
 {
     mkdir_p(config.cache_path);
@@ -376,6 +383,7 @@ static void generate_themes(config_t config)
     create_cache_file("colors.Xresources", vec, config.cache_path, generate_colors_xresources, NULL);
     create_cache_file("colors", vec, config.cache_path, generate_colors, NULL);
     create_cache_file("colors.json", vec, config.cache_path, generate_colors_json, config.image_path);
+    create_cache_file("wallpaper_file_path", vec, config.cache_path, generate_wallpaper_file_path, config.image_path);
 
     vector_free(vec);
 
@@ -443,6 +451,8 @@ static void wal_compatibility(config_t config)
     wal_compatibility_helper(config, wal_cache_path, "colors.json");
     wal_compatibility_helper(config, wal_cache_path, "colors-oomox");
     wal_compatibility_helper(config, wal_cache_path, "colors.Xresources");
+
+    free(wal_cache_path);
 }
 
 int main(int argc, char *argv[])
@@ -463,14 +473,13 @@ int main(int argc, char *argv[])
         switch (c)
         {
         case 'v':
-            // printf("Version: %s.%s\n", PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR);
             printf("%s version: %d.%d\n", argv[0], PROJECT_VERSION_MAJOR, PROJECT_VERSION_MINOR);
             return EXIT_SUCCESS;
         case 'h':
             print_usage(argv[0]);
             return EXIT_SUCCESS;
         case 'i':
-            image = optarg;
+            image = strdup(optarg);
             generate = true;
             break;
         case 'r':
@@ -501,8 +510,25 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
+    if (image == NULL)
+    {
+        char *wallpaper_file_path = format_string("%s/.cache/theming/wallpaper_file_path", getenv("HOME"));
+        FILE *file = fopen(wallpaper_file_path, "r");
+        if (file == NULL)
+        {
+            die("Error: generate theme first");
+        }
+        free(wallpaper_file_path);
+
+        image = safe_malloc(BUFSIZ);
+        read_file(file, image, BUFSIZ);
+
+        fclose(file);
+    }
+
     config_t config;
     config_init(&config, image);
+    free(image);
 
     if (generate)
     {

@@ -109,7 +109,7 @@ void config_init(config_t *config, char *image_path)
         strdup(json_object_get_string(json_find_by_name_safe(jobj, json_type_string, "oomox_theme_name")));
     config->oomox_icon_theme_name =
         strdup(json_object_get_string(json_find_by_name_safe(jobj, json_type_string, "oomox_icon_theme_name")));
-    config->image_path = image_path == NULL ? strdup("") : resolve_absolute_path(image_path);
+    config->image_path = resolve_absolute_path(image_path);
     config->hidpi = json_object_get_boolean(json_find_by_name_safe(jobj, json_type_boolean, "hidpi"));
 
     // generating commands
