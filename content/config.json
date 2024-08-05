@@ -6,6 +6,8 @@
     "oomox_theme_name": "oomox-xresources-reverse",
     "oomox_icon_theme_name": "oomox-xresources-reverse-flat",
     "hidpi": false,
+    "send_notification": true,
+    "image_cache_path": "~/.local/share/bg",
     "generating_commands": [
         {
             "command": "betterlockscreen -u %IMAGE_PATH%",
@@ -33,6 +35,10 @@
         },
         {
             "command": "pywalfox update"
+        },
+        {
+            "command": "xsettingsd",
+            "restart": true
         }
     ]
 }
