@@ -18,7 +18,9 @@ void exec_command_format(bool, char *, size_t, const char *, ...) __attribute__(
 char *resolve_absolute_path(const char *);
 int rmrf(char *);
 int check_directory(const char *);
+int check_file(const char *);
 void make_symlink(const char *, const char *);
 char *replace_substring(const char *, const char *, const char *);
 pid_t find_pid_by_name(const char *);
 void exec_command_and_disown(const char *);
+int cp(const char *, const char *);

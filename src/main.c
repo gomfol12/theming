@@ -1,5 +1,6 @@
 #include <fcntl.h>
 #include <getopt.h>
+#include <libgen.h>
 #include <pthread.h>
 #include <regex.h>
 #include <stdbool.h>
@@ -24,12 +25,10 @@ static void generate_colors_oomox(FILE *, vector_t *, void *);
 static void generate_colors_xresources(FILE *, vector_t *, void *);
 static void generate_colors(FILE *, vector_t *, void *);
 static void generate_colors_json(FILE *, vector_t *, void *);
-static void generate_wallpaper_file_path(FILE *, vector_t *, void *);
-static void make_dirs(config_t config);
 static void *pthread_generate_wrapper(void *);
 static void generate_themes(config_t config);
+static void wal_compatibility_helper(config_t, const char *, const char *);
 static void print_usage(const char *);
-static void wal_compatibility(config_t config);
 
 static vector_t *get_colors(const char *image_path, bool dark)
 {
@@ -353,18 +352,6 @@ static void generate_colors(FILE *file, vector_t *colors, void *userdata)
     }
 }
 
-static void generate_wallpaper_file_path(FILE *file, vector_t *colors, void *userdata)
-{
-    fprintf(file, "%s", (char *)userdata);
-}
-
-static void make_dirs(config_t config)
-{
-    mkdir_p(config.cache_path);
-    mkdir_p(config.theme_path);
-    mkdir_p(config.icon_theme_path);
-}
-
 static void *pthread_generate_wrapper(void *arg)
 {
     command_t *command = (command_t *)arg;
@@ -383,7 +370,6 @@ static void generate_themes(config_t config)
     create_cache_file("colors.Xresources", vec, config.cache_path, generate_colors_xresources, NULL);
     create_cache_file("colors", vec, config.cache_path, generate_colors, NULL);
     create_cache_file("colors.json", vec, config.cache_path, generate_colors_json, config.image_path);
-    create_cache_file("wallpaper_file_path", vec, config.cache_path, generate_wallpaper_file_path, config.image_path);
 
     vector_free(vec);
 
@@ -416,17 +402,6 @@ static void generate_themes(config_t config)
     }
 }
 
-static void print_usage(const char *program_name)
-{
-    printf("Usage: %s [-vhi:rw] [<image_path>]\n", program_name);
-    printf("Options:\n");
-    printf("  -v, --version\t\t\tShow version\n");
-    printf("  -h, --help\t\t\tShow this help message\n");
-    printf("  -i, --image <image_path>\tGenerate theme from image\n");
-    printf("  -r, --reload\t\t\tReload theme\n");
-    printf("  -w, --wal\t\t\tGenerate pywal .cache file to make generated theme compatible.\n");
-}
-
 static void wal_compatibility_helper(config_t config, const char *wal_cache_path, const char *file_name)
 {
     char *colors_path_from = format_string("%s/%s", config.cache_path, file_name);
@@ -436,25 +411,15 @@ static void wal_compatibility_helper(config_t config, const char *wal_cache_path
     free(colors_path_to);
 }
 
-static void wal_compatibility(config_t config)
+static void print_usage(const char *program_name)
 {
-    char *wal_cache_path = expand_tilde("~/.cache/wal");
-
-    if (check_directory(wal_cache_path) == 0)
-    {
-        fprintf(stderr, "pywal cache directory already exists");
-        free(wal_cache_path);
-        return;
-    }
-
-    mkdir_p(wal_cache_path);
-
-    wal_compatibility_helper(config, wal_cache_path, "colors");
-    wal_compatibility_helper(config, wal_cache_path, "colors.json");
-    wal_compatibility_helper(config, wal_cache_path, "colors-oomox");
-    wal_compatibility_helper(config, wal_cache_path, "colors.Xresources");
-
-    free(wal_cache_path);
+    printf("Usage: %s [-vhi:rw] [<image_path>]\n", program_name);
+    printf("Options:\n");
+    printf("  -v, --version\t\t\tShow version\n");
+    printf("  -h, --help\t\t\tShow this help message\n");
+    printf("  -i, --image <image_path>\tGenerate theme from image\n");
+    printf("  -r, --reload\t\t\tReload theme\n");
+    printf("  -w, --wal\t\t\tGenerate pywal .cache file to make generated theme compatible.\n");
 }
 
 int main(int argc, char *argv[])
@@ -481,7 +446,7 @@ int main(int argc, char *argv[])
             print_usage(argv[0]);
             return EXIT_SUCCESS;
         case 'i':
-            image = strdup(optarg);
+            image = optarg;
             generate = true;
             break;
         case 'r':
@@ -512,25 +477,8 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    if (image == NULL)
-    {
-        char *wallpaper_file_path = format_string("%s/.cache/theming/wallpaper_file_path", getenv("HOME"));
-        FILE *file = fopen(wallpaper_file_path, "r");
-        if (file == NULL)
-        {
-            die("Error: generate theme first");
-        }
-        free(wallpaper_file_path);
-
-        image = safe_malloc(BUFSIZ);
-        read_file(file, image, BUFSIZ);
-
-        fclose(file);
-    }
-
     config_t config;
-    config_init(&config, image);
-    free(image);
+    config_init(&config);
 
     // notification
     if (generate && reload && config.send_notification)
@@ -541,11 +489,39 @@ int main(int argc, char *argv[])
 
     if (generate)
     {
-        make_dirs(config);
+        mkdir_p(config.cache_path);
+        mkdir_p(config.theme_path);
+        mkdir_p(config.icon_theme_path);
+
+        char *image_path = strdup(config.image_path);
+        mkdir_p(dirname(image_path));
+        free(image_path);
+
+        if (check_directory(config.image_path) == 0)
+        {
+            die("Error: image_cache_path is are directory.");
+        }
+        if (check_file(config.image_path) == 0)
+        {
+            if (remove(config.image_path) != 0)
+            {
+                die("remove failed:");
+            }
+        }
+        if (cp(config.image_path, image) != 0)
+        {
+            die("cp failed:");
+        }
+
         generate_themes(config);
     }
     if (reload)
     {
+        if (check_directory(config.cache_path) != 0)
+        {
+            die("Error: Cache directory does not exist. Generate theme first.");
+        }
+
         for (size_t i = 0; i < config.reload_commands_size; i++)
         {
             if (config.reload_commands[i].restart)
@@ -568,7 +544,26 @@ int main(int argc, char *argv[])
     }
     if (wal_comp)
     {
-        wal_compatibility(config);
+        if (check_directory(config.cache_path) != 0)
+        {
+            die("Error: Cache directory does not exist. Generate theme first.");
+        }
+
+        char *wal_cache_path = expand_tilde("~/.cache/wal");
+        if (check_directory(wal_cache_path) == 0)
+        {
+            free(wal_cache_path);
+            die("Error: pywal cache directory already exists");
+        }
+
+        mkdir_p(wal_cache_path);
+
+        wal_compatibility_helper(config, wal_cache_path, "colors");
+        wal_compatibility_helper(config, wal_cache_path, "colors.json");
+        wal_compatibility_helper(config, wal_cache_path, "colors-oomox");
+        wal_compatibility_helper(config, wal_cache_path, "colors.Xresources");
+
+        free(wal_cache_path);
     }
 
     // notification

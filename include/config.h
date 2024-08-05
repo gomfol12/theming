@@ -27,5 +27,5 @@ typedef struct
     bool send_notification;
 } config_t;
 
-void config_init(config_t *, char *);
+void config_init(config_t *);
 void config_free(config_t *);

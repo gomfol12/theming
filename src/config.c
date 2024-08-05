@@ -76,7 +76,7 @@ static struct json_object *json_find_by_name(struct json_object *jobj, json_type
     return tmp;
 }
 
-void config_init(config_t *config, char *image_path)
+void config_init(config_t *config)
 {
     // read config file
     char *config_file_path = format_string("%s/theming/config.json", getenv("XDG_CONFIG_HOME"));
@@ -109,7 +109,8 @@ void config_init(config_t *config, char *image_path)
         strdup(json_object_get_string(json_find_by_name_safe(jobj, json_type_string, "oomox_theme_name")));
     config->oomox_icon_theme_name =
         strdup(json_object_get_string(json_find_by_name_safe(jobj, json_type_string, "oomox_icon_theme_name")));
-    config->image_path = resolve_absolute_path(image_path);
+    config->image_path =
+        expand_tilde(json_object_get_string(json_find_by_name_safe(jobj, json_type_string, "image_cache_path")));
     config->hidpi = json_object_get_boolean(json_find_by_name_safe(jobj, json_type_boolean, "hidpi"));
     config->send_notification =
         json_object_get_boolean(json_find_by_name_safe(jobj, json_type_boolean, "send_notification"));
@@ -127,7 +128,7 @@ void config_init(config_t *config, char *image_path)
                 strdup(json_object_get_string(json_find_by_name_safe(json_command, json_type_string, "command"))),
             .async = json_object_get_boolean(json_find_by_name(json_command, json_type_boolean, "async")),
             .ignore_error = json_object_get_boolean(json_find_by_name(json_command, json_type_boolean, "ignore_error")),
-            .restart = json_object_get_boolean(json_find_by_name(json_command, json_type_boolean, "restart")),
+            .restart = false,
         };
     }
 
