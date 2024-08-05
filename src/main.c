@@ -483,8 +483,7 @@ int main(int argc, char *argv[])
     // notification
     if (generate && reload && config.send_notification)
     {
-        exec_command_format(false, NULL, 0, "notify-send -i %s \"Wallpaper Changed\" \"Changing theme...\"",
-                            config.image_path);
+        exec_command_format(false, NULL, 0, "notify-send -i %s \"Wallpaper Changed\" \"Changing theme...\"", image);
     }
 
     if (generate)
@@ -569,8 +568,9 @@ int main(int argc, char *argv[])
     // notification
     if (generate && reload && config.send_notification)
     {
-        exec_command_format(false, NULL, 0, "notify-send -i %s \"Wallpaper Changed\" \"Theme changed\"",
-                            config.image_path);
+        // tactical sleep to wait for wm to restart. Eternal TODO: remove sleep
+        exec_command_format(false, NULL, 0, "sleep 1 && notify-send -i %s \"Wallpaper Changed\" \"Theme changed\"",
+                            image);
     }
 
     config_free(&config);
