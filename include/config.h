@@ -8,6 +8,7 @@ typedef struct
     bool ignore_error;
     bool async;
     bool restart;
+    bool initial;
 } command_t;
 
 typedef struct

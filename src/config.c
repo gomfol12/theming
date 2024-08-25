@@ -146,6 +146,7 @@ void config_init(config_t *config)
             .async = json_object_get_boolean(json_find_by_name(json_command, json_type_boolean, "async")),
             .ignore_error = json_object_get_boolean(json_find_by_name(json_command, json_type_boolean, "ignore_error")),
             .restart = json_object_get_boolean(json_find_by_name(json_command, json_type_boolean, "restart")),
+            .initial = json_object_get_boolean(json_find_by_name(json_command, json_type_boolean, "initial")),
         };
     }
 

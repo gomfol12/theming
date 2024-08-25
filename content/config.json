@@ -24,7 +24,8 @@
     ],
     "reload_commands": [
         {
-            "command": "xrdb -merge %CACHE_PATH%/colors.Xresources"
+            "command": "xrdb -merge %CACHE_PATH%/colors.Xresources",
+            "initial": true
         },
         {
             "command": "pidof st | xargs -r kill -SIGUSR1"

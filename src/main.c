@@ -425,17 +425,23 @@ static void print_usage(const char *program_name)
 int main(int argc, char *argv[])
 {
     static struct option long_options[] = {
-        {"version", no_argument, 0, 0}, {"help", no_argument, 0, 0}, {"image", required_argument, 0, 0},
-        {"reload", no_argument, 0, 0},  {"wal", no_argument, 0, 0},  {0, 0, 0, 0},
+        {"version", no_argument, 0, 0},
+        {"help", no_argument, 0, 0},
+        {"image", required_argument, 0, 0},
+        {"reload", no_argument, 0, 0},
+        {"wal", no_argument, 0, 0},
+        {"initial", no_argument, 0, 0},
+        {0, 0, 0, 0},
     };
 
     char *image = NULL;
     bool generate = false;
     bool reload = false;
     bool wal_comp = false;
+    bool initial = false;
 
     int c;
-    while ((c = getopt_long(argc, argv, "vhi:rw", long_options, NULL)) != -1)
+    while ((c = getopt_long(argc, argv, "vhi:rwf", long_options, NULL)) != -1)
     {
         switch (c)
         {
@@ -454,6 +460,9 @@ int main(int argc, char *argv[])
             break;
         case 'w':
             wal_comp = true;
+            break;
+        case 'f':
+            initial = true;
             break;
         default:
             return EXIT_FAILURE;
@@ -563,6 +572,16 @@ int main(int argc, char *argv[])
         wal_compatibility_helper(config, wal_cache_path, "colors.Xresources");
 
         free(wal_cache_path);
+    }
+    if (initial)
+    {
+        for (size_t i = 0; i < config.reload_commands_size; i++)
+        {
+            if (config.reload_commands[i].initial)
+            {
+                exec_command(config.reload_commands[i].command, config.reload_commands[i].ignore_error, NULL, 0);
+            }
+        }
     }
 
     // notification
