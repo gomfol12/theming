@@ -413,13 +413,14 @@ static void wal_compatibility_helper(config_t config, const char *wal_cache_path
 
 static void print_usage(const char *program_name)
 {
-    printf("Usage: %s [-vhi:rw] [<image_path>]\n", program_name);
+    printf("Usage: %s [-vhi:rwf] [<image_path>]\n", program_name);
     printf("Options:\n");
     printf("  -v, --version\t\t\tShow version\n");
     printf("  -h, --help\t\t\tShow this help message\n");
     printf("  -i, --image <image_path>\tGenerate theme from image\n");
     printf("  -r, --reload\t\t\tReload theme\n");
     printf("  -w, --wal\t\t\tGenerate pywal .cache file to make generated theme compatible.\n");
+    printf("  -f, --initial\t\t\tRun reload_commands marked initial\n");
 }
 
 int main(int argc, char *argv[])
