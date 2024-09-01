@@ -352,6 +352,49 @@ static void generate_colors(FILE *file, vector_t *colors, void *userdata)
     }
 }
 
+static void generate_colors_scss(FILE *file, vector_t *colors, void *userdata)
+{
+    const char *image_path = (char *)userdata;
+    const char *fg = (char *)colors->items[7];
+    const char *bg = (char *)colors->items[0];
+    const char *cursor = (char *)colors->items[7];
+    const char *color0 = (char *)colors->items[0];
+    const char *color1 = (char *)colors->items[1];
+    const char *color2 = (char *)colors->items[2];
+    const char *color3 = (char *)colors->items[3];
+    const char *color4 = (char *)colors->items[4];
+    const char *color5 = (char *)colors->items[5];
+    const char *color6 = (char *)colors->items[6];
+    const char *color7 = (char *)colors->items[7];
+    const char *color8 = (char *)colors->items[8];
+
+    fprintf(file,
+            "$wallpaper: \"%s\";\n"
+            "\n"
+            "$background: %s;\n"
+            "$foreground: %s;\n"
+            "$cursor: %s;\n"
+            "\n"
+            "$color0: %s;\n"
+            "$color1: %s;\n"
+            "$color2: %s;\n"
+            "$color3: %s;\n"
+            "$color4: %s;\n"
+            "$color5: %s;\n"
+            "$color6: %s;\n"
+            "$color7: %s;\n"
+            "$color8: %s;\n"
+            "$color9: %s;\n"
+            "$color10: %s;\n"
+            "$color11: %s;\n"
+            "$color12: %s;\n"
+            "$color13: %s;\n"
+            "$color14: %s;\n"
+            "$color15: %s;\n",
+            image_path, bg, fg, cursor, color0, color1, color2, color3, color4, color5, color6, color7, color8, color1,
+            color2, color3, color4, color5, color6, color7);
+}
+
 static void *pthread_generate_wrapper(void *arg)
 {
     command_t *command = (command_t *)arg;
@@ -370,6 +413,7 @@ static void generate_themes(config_t config)
     create_cache_file("colors.Xresources", vec, config.cache_path, generate_colors_xresources, NULL);
     create_cache_file("colors", vec, config.cache_path, generate_colors, NULL);
     create_cache_file("colors.json", vec, config.cache_path, generate_colors_json, config.image_path);
+    create_cache_file("colors.scss", vec, config.cache_path, generate_colors_scss, config.image_path);
 
     vector_free(vec);
 
@@ -571,6 +615,7 @@ int main(int argc, char *argv[])
         wal_compatibility_helper(config, wal_cache_path, "colors.json");
         wal_compatibility_helper(config, wal_cache_path, "colors-oomox");
         wal_compatibility_helper(config, wal_cache_path, "colors.Xresources");
+        wal_compatibility_helper(config, wal_cache_path, "colors.scss");
 
         free(wal_cache_path);
     }
