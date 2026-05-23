@@ -18,13 +18,15 @@
 #include "util.h"
 #include "vector.h"
 
-static vector_t *parse_colors(const char *);
 static vector_t *get_colors(const char *, bool);
+static vector_t *parse_colors(const char *);
 static void create_cache_file(const char *, vector_t *, const char *, void (*)(FILE *, vector_t *, void *), void *);
 static void generate_colors_oomox(FILE *, vector_t *, void *);
 static void generate_colors_xresources(FILE *, vector_t *, void *);
-static void generate_colors(FILE *, vector_t *, void *);
 static void generate_colors_json(FILE *, vector_t *, void *);
+static void generate_colors(FILE *, vector_t *, void *);
+static void generate_colors_scss(FILE *, vector_t *, void *);
+static void generate_colors_kitty_conf(FILE *, vector_t *, void *);
 static void generate_colors_js(FILE *, vector_t *, void *);
 static void generate_colors_lua(FILE *, vector_t *, void *);
 static void *pthread_generate_wrapper(void *);
