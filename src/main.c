@@ -29,6 +29,7 @@ static void generate_colors_scss(FILE *, vector_t *, void *);
 static void generate_colors_kitty_conf(FILE *, vector_t *, void *);
 static void generate_colors_js(FILE *, vector_t *, void *);
 static void generate_colors_lua(FILE *, vector_t *, void *);
+static void generate_colors_hyprlang(FILE *, vector_t *, void *);
 static void *pthread_generate_wrapper(void *);
 static void generate_themes(config_t config);
 static void wal_compatibility_helper(config_t, const char *, const char *);
@@ -502,6 +503,27 @@ static void generate_colors_lua(FILE *file, vector_t *colors, void *userdata)
                   "}");
 }
 
+static void generate_colors_hyprlang(FILE *file, vector_t *colors, void *userdata)
+{
+    const char *bg = (char *)colors->items[0] + 1;
+    const char *fg = (char *)colors->items[7] + 1;
+    const char *image_path = (char *)userdata;
+
+    fprintf(file,
+            "$wallpaper=\"%s\"\n"
+            "\n"
+            "$background=rgb(%s)\n"
+            "$foreground=rgb(%s)\n"
+            "$cursor=rgb(%s)\n"
+            "\n",
+            image_path, bg, fg, fg);
+
+    for (size_t i = 0; i < colors->size; i++)
+    {
+        fprintf(file, "$color%d=rgb(%s)\n", (int)i, (char *)colors->items[i] + 1);
+    }
+}
+
 static void *pthread_generate_wrapper(void *arg)
 {
     command_t *command = (command_t *)arg;
@@ -524,6 +546,7 @@ static void generate_themes(config_t config)
     create_cache_file("colors-kitty.conf", vec, config.cache_path, generate_colors_kitty_conf, NULL);
     create_cache_file("colors.js", vec, config.cache_path, generate_colors_js, config.image_path);
     create_cache_file("colors.lua", vec, config.cache_path, generate_colors_lua, config.image_path);
+    create_cache_file("colors.conf", vec, config.cache_path, generate_colors_hyprlang, config.image_path);
 
     vector_free(vec);
 
