@@ -135,3 +135,16 @@ static double hue_to_rgb(double p, double q, double t)
         return p + (q - p) * (2.0 / 3 - t) * 6;
     return p;
 }
+
+double get_luminance(const RGB *c)
+{
+    return 0.2126 * c->r + 0.7152 * c->g + 0.0722 * c->b;
+}
+
+double get_saturation(const RGB *c)
+{
+    HLS hls;
+    rgb_to_hls(c, &hls);
+
+    return hls.s;
+}

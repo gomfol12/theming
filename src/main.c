@@ -1,6 +1,7 @@
 #include <fcntl.h>
 #include <getopt.h>
 #include <libgen.h>
+#include <math.h>
 #include <pthread.h>
 #include <regex.h>
 #include <stdbool.h>
@@ -163,19 +164,152 @@ static void create_cache_file(const char *name, vector_t *colors, const char *ca
     fclose(file);
 }
 
+static double accent_score(const RGB *c)
+{
+    double lum = get_luminance(c);
+
+    HLS hls;
+    rgb_to_hls(c, &hls);
+
+    // distance from gray
+    double chroma = fabs((double)c->r - c->g) + fabs((double)c->g - c->b) + fabs((double)c->b - c->r);
+
+    // Penalize:
+    //   - very dark colors
+    //   - very bright colors
+    double brightness_penalty = 1.0;
+
+    if (lum < 45.0)
+        brightness_penalty *= 0.2;
+
+    if (lum > 220.0)
+        brightness_penalty *= 0.3;
+
+    return hls.s * chroma * brightness_penalty;
+}
+
 static void generate_colors_oomox(FILE *file, vector_t *colors, void *userdata)
 {
-    const char *bg = (char *)colors->items[0] + 1;
-    const char *fg = (char *)colors->items[7] + 1;
-    const char *sel_bg = (char *)colors->items[1] + 1;
-    const char *sel_fg = (char *)colors->items[0] + 1;
-    const char *btn_bg = (char *)colors->items[4] + 1;
-    const char *btn_fg = (char *)colors->items[0] + 1;
-    const char *wm_border_focus = (char *)colors->items[1] + 1;
-    const char *icons_light_folder = (char *)colors->items[2] + 1;
-    const char *icons_light = (char *)colors->items[3] + 1;
-    const char *icons_medium = (char *)colors->items[4] + 1;
-    const char *icons_dark = (char *)colors->items[5] + 1;
+    RGB darkest = {0};
+    RGB brightest = {0};
+    RGB accent = {0};
+    RGB neutral = {0};
+
+    bool darkest_set = false;
+    bool brightest_set = false;
+    bool accent_set = false;
+    bool neutral_set = false;
+
+    double darkest_luma = 99999.0;
+    double brightest_luma = -1.0;
+    double best_accent_score = -1.0;
+
+    for (size_t i = 0; i < colors->size; i++)
+    {
+        RGB *parsed = from_hex_string_to_RGB(colors->items[i]);
+        RGB c = *parsed;
+        free(parsed);
+
+        double lum = get_luminance(&c);
+        double sat = get_saturation(&c);
+        double score = accent_score(&c);
+
+        // darkest color
+        if (lum < darkest_luma)
+        {
+            darkest_luma = lum;
+            darkest = c;
+            darkest_set = true;
+        }
+
+        // brightest color
+        if (lum > brightest_luma)
+        {
+            brightest_luma = lum;
+            brightest = c;
+            brightest_set = true;
+        }
+
+        // accent color
+        if (score > best_accent_score)
+        {
+            best_accent_score = score;
+            accent = c;
+            accent_set = true;
+        }
+
+        // neutral color
+        if (lum > 80.0 && lum < 180.0 && sat < 0.35)
+        {
+            neutral = c;
+            neutral_set = true;
+        }
+    }
+
+    // fallbacks
+    if (!darkest_set)
+    {
+        RGB *parsed = from_hex_string_to_RGB(colors->items[0]);
+        darkest = *parsed;
+        free(parsed);
+    }
+    if (!brightest_set)
+    {
+        RGB *parsed = from_hex_string_to_RGB(colors->items[0]);
+        brightest = *parsed;
+        free(parsed);
+    }
+    if (!accent_set)
+    {
+        RGB *parsed = from_hex_string_to_RGB(colors->items[0]);
+        accent = *parsed;
+        free(parsed);
+    }
+    if (!neutral_set)
+    {
+        RGB *parsed = from_hex_string_to_RGB(colors->items[0]);
+        neutral = *parsed;
+        free(parsed);
+    }
+
+    // colors
+
+    RGB hdr_bg = darkest;
+    RGB btn_bg = darkest;
+
+    lighten_color(&hdr_bg, 0.03);
+    lighten_color(&btn_bg, 0.06);
+
+    RGB fg = brightest;
+
+    if (get_luminance(&fg) > 235.0)
+    {
+        darken_color(&fg, 0.08);
+    }
+
+    RGB sel = accent;
+
+    // icon hierarchy
+    RGB icons_light = neutral;
+    RGB icons_medium = neutral;
+    RGB icons_dark = neutral;
+
+    lighten_color(&icons_light, 0.18);
+    darken_color(&icons_dark, 0.18);
+
+    // HEX strings
+
+    char *bg_hex = from_RGB_to_hex_string(&darkest);
+    char *fg_hex = from_RGB_to_hex_string(&fg);
+
+    char *hdr_hex = from_RGB_to_hex_string(&hdr_bg);
+    char *btn_hex = from_RGB_to_hex_string(&btn_bg);
+
+    char *sel_hex = from_RGB_to_hex_string(&sel);
+
+    char *icons_light_hex = from_RGB_to_hex_string(&icons_light);
+    char *icons_medium_hex = from_RGB_to_hex_string(&icons_medium);
+    char *icons_dark_hex = from_RGB_to_hex_string(&icons_dark);
 
     fprintf(file,
             "NAME=\"Theme\"\n"
@@ -194,28 +328,26 @@ static void generate_colors_oomox(FILE *file, vector_t *colors, void *userdata)
             "ICONS_LIGHT_FOLDER=%s\n"
             "ICONS_LIGHT=%s\n"
             "ICONS_MEDIUM=%s\n"
-            "ICONS_DARK=%s",
-            bg, fg, bg, fg, sel_bg, sel_fg, bg, fg, btn_bg, btn_fg, wm_border_focus, icons_light_folder, icons_light,
-            icons_medium, icons_dark);
+            "ICONS_DARK=%s\n"
+            "ROUNDNESS=0\n"
+            "SPACING=3\n"
+            "GRADIENT=0.0\n"
+            "GTK3_GENERATE_DARK=True\n",
+            bg_hex + 1, fg_hex + 1, bg_hex + 1, fg_hex + 1, sel_hex + 1, bg_hex + 1, hdr_hex + 1, fg_hex + 1,
+            btn_hex + 1, fg_hex + 1, sel_hex + 1, icons_light_hex + 1, icons_light_hex + 1, icons_medium_hex + 1,
+            icons_dark_hex + 1);
 
-    // TODO: look at this
-    // NAME=wal
-    // BG=141516
-    // FG=e8edeb
-    // MENU_BG=141516
-    // MENU_FG=e8edeb
-    // SEL_BG=A87E85
-    // SEL_FG=141516
-    // TXT_BG=141516
-    // TXT_FG=e8edeb
-    // BTN_BG=709791
-    // BTN_FG=e8edeb
-    // HDR_BTN_BG=9FA39D
-    // HDR_BTN_FG=e8edeb
-    // GTK3_GENERATE_DARK=True
-    // ROUNDNESS=0
-    // SPACING=3
-    // GRADIENT=0.0
+    free(bg_hex);
+    free(fg_hex);
+
+    free(hdr_hex);
+    free(btn_hex);
+
+    free(sel_hex);
+
+    free(icons_light_hex);
+    free(icons_medium_hex);
+    free(icons_dark_hex);
 }
 
 static void generate_colors_xresources(FILE *file, vector_t *colors, void *userdata)

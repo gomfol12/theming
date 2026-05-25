@@ -22,3 +22,5 @@ RGB *from_hex_string_to_RGB(const char *);
 char *from_RGB_to_hex_string(const RGB *);
 void rgb_to_hls(const RGB *, HLS *);
 void hls_to_rgb(const HLS *, RGB *);
+double get_luminance(const RGB *);
+double get_saturation(const RGB *);
