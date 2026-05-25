@@ -29,13 +29,14 @@ Example file can be found in `content` dir or in `/usr/local/share/theming/conte
 # Building and dependencies
 
 - Dependencies:
-    - [json-c](https://github.com/json-c/json-c)
+  - [json-c](https://github.com/json-c/json-c)
 
 - Building:
+
 ```
 make
 ```
 
-# Greatly inspired and copied from
+# Greatly inspired
 
 - [wal](https://github.com/dylanaraps/pywal)
